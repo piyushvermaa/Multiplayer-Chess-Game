@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            grid-template-rows: repeat(8, minmax(0, 1fr));
+            width: 400px;
+            height: 400px;
+            transform: rotate(0deg);
+        }
+        .piece.white {
+            color: white;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 1));
+        }
+        .piece.black {
+            color: black;
+        }
+        .flipped {
+            transform: rotate(180deg);
+        }
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .square.light {
+            background-color: #f0d9b5;
+        }
+        .square.dark {
+            background-color: #b58863;
+        }
+        .piece {
+            font-size: 36px;
+            cursor: pointer;
+        }
+        .piece.draggable {
+            cursor: grab;
+        }
+        .dragging {
+            opacity: 0.5;
+        }
+        .highlight {
+            outline: 2px solid yellow;
+        }
+        .turn-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .turn-popup.visible {
+            display: block;
+        }
+        .status {
+            margin-top: 10px;
+            color: white;
+        }
+        .user-count {
+            margin-top: 10px;
+            color: white;
+        }
+        .message {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="w-full h-screen flex flex-col items-center justify-center bg-zinc-900">
+        <input id="roomName" type="text" placeholder="Room Name" class="mb-4 p-2 border border-gray-400 rounded" />
+        <div class="flex space-x-4 mb-4">
+            <button id="createRoomButton" class="px-4 py-2 bg-blue-500 text-white rounded">Create Room</button>
+            <button id="joinRoomButton" class="px-4 py-2 bg-green-500 text-white rounded">Join Room</button>
+        </div>
+        <div class="chessboard w-96 h-96 border border-black"></div>
+        <div class="status"></div>
+        <div class="user-count"></div>
+        <div class="turn-popup"></div>
+        <div class="message"></div>
+    </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js" integrity="sha512-xRllwz2gdZciIB+AkEbeq+gVhX8VB8XsfqeFbUh+SzHlN96dEduwtTuVuc2u9EROlmW9+yhRlxjif66ORpsgVA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="/js/game.js"></script>
+</body>
+</html>
