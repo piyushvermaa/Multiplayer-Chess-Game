@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
 io.on("connection", function (uniquesocket) {
     console.log("User connected");
 
-    uniquesocket.on("createRoom", (roomName) => {
+    uniquesocket.on("createRoom", ({ roomName, username }) => {
         if (rooms[roomName]) {
             uniquesocket.emit("error", "Room already exists");
             return;
@@ -35,16 +35,16 @@ io.on("connection", function (uniquesocket) {
             spectators: []
         };
 
-        joinRoom(uniquesocket, roomName);
+        joinRoom(uniquesocket, roomName, username);
     });
 
-    uniquesocket.on("joinRoom", (roomName) => {
+    uniquesocket.on("joinRoom", ({ roomName, username }) => {
         if (!rooms[roomName]) {
             uniquesocket.emit("error", "Room does not exist");
             return;
         }
 
-        joinRoom(uniquesocket, roomName);
+        joinRoom(uniquesocket, roomName, username);
     });
 
     uniquesocket.on("move", (move, roomName) => {
@@ -78,13 +78,14 @@ io.on("connection", function (uniquesocket) {
             if (play) {
                 const room = rooms[roomName];
                 if (!room.players.white) {
-                    room.players.white = uniquesocket.id;
+                    room.players.white = { id: uniquesocket.id, username: uniquesocket.username };
                     uniquesocket.emit("PlayerRole", "w");
                 } else if (!room.players.black) {
-                    room.players.black = uniquesocket.id;
+                    room.players.black = { id: uniquesocket.id, username: uniquesocket.username };
                     uniquesocket.emit("PlayerRole", "b");
                 }
-                room.spectators = room.spectators.filter(id => id !== uniquesocket.id);
+                room.spectators = room.spectators.filter(spectator => spectator.id !== uniquesocket.id);
+                io.to(roomName).emit("updateUsers", getUsersInRoom(roomName));
             }
         } catch (err) {
             console.log("Spectator Can't Move");
@@ -109,41 +110,64 @@ io.on("connection", function (uniquesocket) {
                     }
                 }
             } else {
-                room.spectators = room.spectators.filter(id => id !== uniquesocket.id);
+                room.spectators = room.spectators.filter(spectator => spectator.id !== uniquesocket.id);
             }
 
             if (!room.players.white && !room.players.black && room.spectators.length === 0) {
                 delete rooms[roomName];
+            } else {
+                io.to(roomName).emit("updateUsers", getUsersInRoom(roomName));
             }
         }
     });
+
+    uniquesocket.on("sendMessage", ({ message, username, roomName }) => {
+        if (!rooms[roomName] || !username) return;
+        const room = rooms[roomName];
+        const role = getPlayerRole(room, uniquesocket.id) || "Spectator";
+        io.to(roomName).emit("chatMessage", { message, username, role });
+    });
 });
 
-const joinRoom = (uniquesocket, roomName) => {
+const joinRoom = (uniquesocket, roomName, username) => {
     uniquesocket.join(roomName);
     const room = rooms[roomName];
     let role = null;
 
     if (!room.players.white) {
-        room.players.white = uniquesocket.id;
+        room.players.white = { id: uniquesocket.id, username };
         role = "w";
     } else if (!room.players.black) {
-        room.players.black = uniquesocket.id;
+        room.players.black = { id: uniquesocket.id, username };
         role = "b";
     } else {
-        room.spectators.push(uniquesocket.id);
+        room.spectators.push({ id: uniquesocket.id, username });
         role = "spectator";
     }
 
     uniquesocket.emit("PlayerRole", role);
     uniquesocket.emit("boardState", room.chess.fen());
-    io.to(roomName).emit("userCount", room.players.white && room.players.black ? 2 : 1);
+    io.to(roomName).emit("updateUsers", getUsersInRoom(roomName));
+    io.to(roomName).emit("userCount", Object.keys(room.players).filter(k => room.players[k]).length + room.spectators.length);
 };
 
-const getPlayerRole = (room, socketId) => {
-    if (room.players.white === socketId) return "white";
-    if (room.players.black === socketId) return "black";
+const getPlayerRole = (rooms, socketId) => {
+    
+    if (rooms.players.white && rooms.players.white.id === socketId) return "white";
+    if (rooms.players.black && rooms.players.black.id === socketId) return "black";
     return null;
+};
+
+const getUsersInRoom = (roomName) => {
+    const room = rooms[roomName];
+    if (!room) return [];
+
+    const users = [];
+    if (room.players.white) users.push({ username: room.players.white.username, role: "White" });
+    if (room.players.black) users.push({ username: room.players.black.username, role: "Black" });
+    room.spectators.forEach(spectator => users.push({ username: spectator.username, role: "Spectator" }));
+
+    return users;
 };
 
 server.listen(3000, () => {
